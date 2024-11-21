@@ -1,0 +1,651 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Cotizaciones</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #000000;
+            --secondary-color: #FFFFFF;
+            --text-color: #000000;
+            --background-color: #FFFFFF;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--background-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        body.dark-mode {
+            --primary-color: #FF6600;
+            --secondary-color: #000000;
+            --text-color: #FFFFFF;
+            --background-color: #000000;
+        }
+        h1, h2 {
+            color: var(--primary-color);
+            text-align: center;
+        }
+        form {
+            background-color: var(--secondary-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        form div {
+            margin-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        input[type="text"], input[type="number"], input[type="date"], textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--primary-color);
+            border-radius: 4px;
+            box-sizing: border-box;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        button {
+            background-color: var(--primary-color);
+            color: var(--secondary-color);
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background-color: var(--secondary-color);
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--primary-color);
+        }
+        th {
+            background-color: var(--primary-color);
+            color: var(--secondary-color);
+            font-weight: bold;
+            cursor: pointer;
+        }
+        th:hover {
+            opacity: 0.8;
+        }
+        tr:nth-child(even) {
+            background-color: rgba(0,0,0,0.05);
+        }
+        tr:hover {
+            background-color: rgba(0,0,0,0.1);
+        }
+        .editBtn, .deleteBtn {
+            padding: 5px 10px;
+            margin: 2px;
+            font-size: 0.8em;
+        }
+        .editBtn {
+            background-color: var(--primary-color);
+        }
+        .deleteBtn {
+            background-color: #CC0000;
+        }
+        .chart-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .chart {
+            width: 48%;
+            background-color: var(--secondary-color);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        #filterContainer {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #filterInput {
+            width: 70%;
+            padding: 8px;
+            border: 1px solid var(--primary-color);
+            border-radius: 4px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        #filterSelect {
+            width: 25%;
+            padding: 8px;
+            border: 1px solid var(--primary-color);
+            border-radius: 4px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .pagination button {
+            margin: 0 5px;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .notification.success {
+            background-color: #4CAF50;
+        }
+        .notification.error {
+            background-color: #f44336;
+        }
+        .dark-mode-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: var(--primary-color);
+            color: var(--secondary-color);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            table, tr, td {
+                display: block;
+            }
+            tr {
+                margin-bottom: 15px;
+            }
+            td {
+                border: none;
+                position: relative;
+                padding-left: 50%;
+            }
+            td:before {
+                content: attr(data-label);
+                position: absolute;
+                left: 6px;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                font-weight: bold;
+                color: var(--primary-color);
+            }
+            .chart-container {
+                flex-direction: column;
+            }
+            .chart {
+                width: 100%;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button id="darkModeToggle" class="dark-mode-toggle">🌓</button>
+    <div id="notification" class="notification"></div>
+
+    <h1>Formulario de Cotización</h1>
+    
+    <!-- Formulario de cotización -->
+    <form id="cotizacionForm">
+        <input type="hidden" name="id" id="id">
+        <div>
+            <label for="modelo">Modelo:</label>
+            <input type="text" id="modelo" name="modelo" list="modelosList" required>
+            <datalist id="modelosList"></datalist>
+        </div>
+        <div>
+            <label for="marca">Marca:</label>
+            <input type="text" id="marca" name="marca" list="marcasList" required>
+            <datalist id="marcasList"></datalist>
+        </div>
+        <div>
+            <label for="año">Año:</label>
+            <input type="number" id="año" name="año" list="añosList" required>
+            <datalist id="añosList"></datalist>
+        </div>
+        <div>
+            <label for="precio">Precio:</label>
+            <input type="text" id="precio" name="precio" required pattern="^\d+(\.\d{1,2})?$">
+        </div>
+        <div>
+            <label for="color">Color:</label>
+            <input type="text" id="color" name="color" list="coloresList">
+            <datalist id="coloresList"></datalist>
+        </div>
+        <div>
+            <label for="detalles_cliente">Detalles Cliente:</label>
+            <textarea id="detalles_cliente" name="detalles_cliente"></textarea>
+        </div>
+        <div>
+            <label for="fecha_creacion">Fecha de Cotización:</label>
+            <input type="date" id="fecha_creacion" name="fecha_creacion" required>
+        </div>
+        <button type="submit">Enviar Cotización</button>
+    </form>
+
+    <!-- Tabla de cotizaciones -->
+    <h2>Lista de Cotizaciones</h2>
+    <div id="filterContainer">
+        <input type="text" id="filterInput" placeholder="Filtrar cotizaciones...">
+        <select id="filterSelect">
+            <option value="all">Todos los campos</option>
+            <option value="modelo">Modelo</option>
+            <option value="marca">Marca</option>
+            <option value="año">Año</option>
+            <option value="precio">Precio</option>
+            <option value="color">Color</option>
+        </select>
+    </div>
+    <button id="exportBtn">Exportar a Excel</button>
+    <table id="cotizacionesTable">
+        <thead>
+            <tr>
+                <th data-sort="id">ID</th>
+                <th data-sort="modelo">Modelo</th>
+                <th data-sort="marca">Marca</th>
+                <th data-sort="año">Año</th>
+                <th data-sort="precio">Precio</th>
+                <th data-sort="color">Color</th>
+                <th data-sort="detalles_cliente">Detalles Cliente</th>
+                <th data-sort="fecha_creacion">Fecha</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Aquí se llenarán los registros de las cotizaciones -->
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        <button id="prevPage">Anterior</button>
+        <span id="pageInfo">Página 1 de 1</span>
+        <button id="nextPage">Siguiente</button>
+    </div>
+
+    <!-- Contenedor para los gráficos -->
+    <div class="chart-container">
+        <div class="chart">
+            <canvas id="marcasChart"></canvas>
+        </div>
+        <div class="chart">
+            <canvas id="preciosChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            let marcasChart, preciosChart;
+            let currentPage = 1;
+            const itemsPerPage = 10;
+            let totalPages = 1;
+            let sortColumn = 'id';
+            let sortOrder = 'asc';
+
+            // Listas predefinidas
+            const modelos = ['Sedan', 'SUV', 'Hatchback', 'Pickup', 'Coupe', 'Minivan', 'Convertible', 'Wagon'];
+            const marcas = ['Toyota', 'Honda', 'Ford', 'Chevrolet', 'Nissan', 'Volkswagen', 'BMW', 'Mercedes-Benz', 'Audi', 'Hyundai'];
+            const años = Array.from({length: 30}, (_, i) => new Date().getFullYear() - i);
+            const colores = ['Negro', 'Blanco', 'Rojo', 'Azul', 'Plata', 'Gris', 'Verde', 'Amarillo', 'Naranja', 'Marrón'];
+
+            // Función para llenar los datalists
+            function fillDataLists() {
+                fillDataList('modelosList', modelos);
+                fillDataList('marcasList', marcas);
+                fillDataList('añosList', años);
+                fillDataList('coloresList', colores);
+            }
+
+            function fillDataList(id, options) {
+                const dataList = $(`#${id}`);
+                dataList.empty();
+                options.forEach(option => {
+                    dataList.append(`<option value="${option}">`);
+                });
+            }
+
+            // Llenar los datalists al cargar la página
+            fillDataLists();
+
+            // Función para cargar las cotizaciones
+            function loadCotizaciones() {
+                $.ajax({
+                    url: 'api.php',
+                    method: 'GET',
+                    data: {
+                        page: currentPage,
+                        itemsPerPage: itemsPerPage,
+                        sortColumn: sortColumn,
+                        sortOrder: sortOrder
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            var tableContent = '';
+                            $.each(response.data, function(index, cotizacion) {
+                                tableContent += `<tr>
+                                    <td data-label="ID">${cotizacion.id}</td>
+                                    <td data-label="Modelo">${cotizacion.modelo}</td>
+                                    <td data-label="Marca">${cotizacion.marca}</td>
+                                    <td data-label="Año">${cotizacion.año}</td>
+                                    <td data-label="Precio">${cotizacion.precio}</td>
+                                    <td data-label="Color">${cotizacion.color}</td>
+                                    <td data-label="Detalles Cliente">${cotizacion.detalles_cliente}</td>
+                                    <td data-label="Fecha">${cotizacion.fecha_creacion}</td>
+                                    <td data-label="Acciones">
+                                        <button class="editBtn" data-id="${cotizacion.id}">Editar</button>
+                                        <button class="deleteBtn" data-id="${cotizacion.id}">Eliminar</button>
+                                    </td>
+                                </tr>`;
+                            });
+                            $('#cotizacionesTable tbody').html(tableContent);
+                            updatePagination(response.totalItems);
+                            updateCharts(response.data);
+                        } else {
+                            showNotification(response.message, 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        showNotification('Error al cargar las cotizaciones: ' + error, 'error');
+                    }
+                });
+            }
+
+            // Función para actualizar la paginación
+            function updatePagination(totalItems) {
+                totalPages = Math.ceil(totalItems / itemsPerPage);
+                $('#pageInfo').text(`Página ${currentPage} de ${totalPages}`);
+                $('#prevPage').prop('disabled', currentPage === 1);
+                $('#nextPage').prop('disabled', currentPage === totalPages);
+            }
+
+            // Eventos para paginación
+            $('#prevPage').click(function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    loadCotizaciones();
+                }
+            });
+
+            $('#nextPage').click(function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    loadCotizaciones();
+                }
+            });
+
+            // Función para actualizar los gráficos
+            function updateCharts(data) {
+                const marcas = {};
+                const precios = {
+                    '0-1000': 0,
+                    '1001-5000': 0,
+                    '5001-10000': 0,
+                    '10001+': 0
+                };
+
+                data.forEach(cotizacion => {
+                    // Contar marcas
+                    marcas[cotizacion.marca] = (marcas[cotizacion.marca] || 0) + 1;
+
+                    // Categorizar precios
+                    const precio = parseFloat(cotizacion.precio);
+                    if (precio <= 1000) precios['0-1000']++;
+                    else if (precio <= 5000) precios['1001-5000']++;
+                    else if (precio <= 10000) precios['5001-10000']++;
+                    else precios['10001+']++;
+                });
+
+                const isDarkMode = $('body').hasClass('dark-mode');
+                const textColor = isDarkMode ? '#FFFFFF' : '#000000';
+
+                // Actualizar gráfico de marcas
+                if (marcasChart) marcasChart.destroy();
+                marcasChart = new Chart(document.getElementById('marcasChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(marcas),
+                        datasets: [{
+                            label: 'Número de Cotizaciones por Marca',
+                            data: Object.values(marcas),
+                            backgroundColor: isDarkMode ? 'rgba(255, 102, 0, 0.8)' : 'rgba(0, 0, 0, 0.8)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1,
+                                    color: textColor
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: textColor
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: textColor
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Actualizar gráfico de precios
+                if (preciosChart) preciosChart.destroy();
+                preciosChart = new Chart(document.getElementById('preciosChart'), {
+                    type: 'pie',
+                    data: {
+                        labels: Object.keys(precios),
+                        datasets: [{
+                            data: Object.values(precios),
+                            backgroundColor: isDarkMode ? 
+                                ['rgba(255, 102, 0, 0.8)', 'rgba(255, 153, 51, 0.8)', 'rgba(255, 204, 102, 0.8)', 'rgba(255, 229, 153, 0.8)'] :
+                                ['rgba(0, 0, 0, 0.8)', 'rgba(64, 64, 64, 0.8)', 'rgba(128, 128, 128, 0.8)', 'rgba(192, 192, 192, 0.8)']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    color: textColor
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Distribución de Precios',
+                                color: textColor
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Cargar las cotizaciones al inicio
+            loadCotizaciones();
+
+            // Función para mostrar notificaciones
+            function showNotification(message, type) {
+                const notification = $('#notification');
+                notification.text(message).removeClass('success error').addClass(type);
+                notification.css('opacity', 1);
+                setTimeout(() => notification.css('opacity', 0), 3000);
+            }
+
+            // Función para agregar o editar una cotización
+            $('#cotizacionForm').submit(function(event) {
+                event.preventDefault();
+
+                var formData = $(this).serialize();
+                $.ajax({
+                    url: 'api.php',
+                    method: 'POST',
+                    data: formData,
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            showNotification(response.message, 'success');
+                            loadCotizaciones();
+                            $('#cotizacionForm')[0].reset();
+                            $('#id').val('');
+                        } else {
+                            showNotification('Error: ' + response.message, 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        showNotification('Error al enviar la cotización: ' + error, 'error');
+                    }
+                });
+            });
+
+            // Función para editar una cotización
+            $(document).on('click', '.editBtn', function() {
+                var id = $(this).data('id');
+                $.ajax({
+                    url: 'api.php',
+                    method: 'GET',
+                    data: { id: id },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            var data = response.data;
+                            $('#id').val(data.id);
+                            $('#modelo').val(data.modelo);
+                            $('#marca').val(data.marca);
+                            $('#año').val(data.año);
+                            $('#precio').val(data.precio);
+                            $('#color').val(data.color);
+                            $('#detalles_cliente').val(data.detalles_cliente);
+                            $('#fecha_creacion').val(data.fecha_creacion);
+                        } else {
+                            showNotification('Error: ' + response.message, 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        showNotification('Error al cargar la cotización: ' + error, 'error');
+                    }
+                });
+            });
+
+            // Función para eliminar una cotización
+            $(document).on('click', '.deleteBtn', function() {
+                var id = $(this).data('id');
+                if (confirm('¿Estás seguro de eliminar esta cotización?')) {
+                    $.ajax({
+                        url: 'api.php',
+                        method: 'DELETE',
+                        data: JSON.stringify({ id: id }),
+                        contentType: 'application/json',
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success) {
+                                showNotification(response.message, 'success');
+                                loadCotizaciones();
+                            } else {
+                                showNotification('Error: ' + response.message, 'error');
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            showNotification('Error al eliminar la cotización: ' + error, 'error');
+                        }
+                    });
+                }
+            });
+
+            // Función para filtrar las cotizaciones
+            $('#filterInput, #filterSelect').on('input change', function() {
+                var filterValue = $('#filterInput').val().toLowerCase();
+                var filterField = $('#filterSelect').val();
+
+                $('#cotizacionesTable tbody tr').filter(function() {
+                    var rowText = (filterField === 'all') ? $(this).text().toLowerCase() : $(this).find(`td[data-label="${filterField}"]`).text().toLowerCase();
+                    $(this).toggle(rowText.indexOf(filterValue) > -1);
+                });
+            });
+
+            // Ordenar tabla
+            $('#cotizacionesTable th').click(function() {
+                sortColumn = $(this).data('sort');
+                sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+                loadCotizaciones();
+            });
+
+            // Modo oscuro
+            $('#darkModeToggle').click(function() {
+                $('body').toggleClass('dark-mode');
+                loadCotizaciones(); // Recargar para actualizar los gráficos
+            });
+
+            // Exportar a Excel
+            $('#exportBtn').click(function() {
+                $.ajax({
+                    url: 'api.php',
+                    method: 'GET',
+                    data: { action: 'export' },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            var wb = XLSX.utils.book_new();
+                            var ws = XLSX.utils.json_to_sheet(response.data);
+                            XLSX.utils.book_append_sheet(wb, ws, "Cotizaciones");
+                            XLSX.writeFile(wb, "cotizaciones.xlsx");
+                        } else {
+                            showNotification('Error al exportar: ' + response.message, 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        showNotification('Error al exportar las cotizaciones: ' + error, 'error');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
